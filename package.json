@@ -1,0 +1,48 @@
+{
+  "name": "@multiforum/security-attachment-scan",
+  "version": "0.2.1",
+  "description": "Scans uploaded file attachments for malware using the VirusTotal API",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "plugin.json",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "node -e \"import('node:fs').then(fs => fs.rmSync('dist', { recursive: true, force: true }))\"",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "validate:manifest": "node scripts/validate-manifest.mjs",
+    "bundle": "node scripts/create-bundle.mjs",
+    "ci": "npm run validate:manifest && npm run test && npm run build && npm run bundle"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gennit-project/multiforum-plugin-security-attachment-scan.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/issues"
+  },
+  "homepage": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan#readme",
+  "keywords": [
+    "multiforum",
+    "plugin",
+    "security",
+    "virustotal",
+    "downloads"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.9",
+    "@types/node-fetch": "^2.6.4"
+  }
+}

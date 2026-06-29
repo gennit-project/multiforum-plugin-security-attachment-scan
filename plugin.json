@@ -1,0 +1,104 @@
+{
+  "id": "security-attachment-scan",
+  "name": "Security: Attachment Scan",
+  "version": "0.2.1",
+  "description": "Scans uploaded file attachments for malware using the VirusTotal API",
+  "entry": "dist/index.js",
+  "events": [
+    "downloadableFile.created",
+    "downloadableFile.updated",
+    "downloadableFile.downloaded"
+  ],
+  "secrets": [
+    {
+      "key": "VIRUS_TOTAL_API_KEY",
+      "scope": "server",
+      "required": true,
+      "description": "VirusTotal API key for malware scanning of uploaded files",
+      "validationHint": "Should be a valid VirusTotal API key starting with a letter and containing alphanumeric characters"
+    }
+  ],
+  "metadata": {
+    "author": {
+      "name": "Multiforum Team",
+      "url": "https://github.com/gennit-project"
+    },
+    "homepage": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan#readme",
+    "license": "MIT",
+    "tags": [
+      "security",
+      "virustotal",
+      "downloads"
+    ]
+  },
+  "documentation": {
+    "readmePath": "README.md"
+  },
+  "source": {
+    "repoUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan",
+    "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.2.1"
+  },
+  "compatibility": {
+    "minServerVersion": "1.0.0",
+    "apiVersion": "1"
+  },
+  "settingsDefaults": {
+    "server": {
+      "scanTimeoutMs": 45000,
+      "quarantineOnDetection": true,
+      "reattemptOnFailure": true
+    },
+    "channel": {}
+  },
+  "ui": {
+    "forms": {
+      "server": [
+        {
+          "title": "VirusTotal API",
+          "description": "Provide the VirusTotal API key that will be used to scan uploaded files.",
+          "fields": [
+            {
+              "type": "secret",
+              "key": "VIRUS_TOTAL_API_KEY",
+              "label": "VirusTotal API Key",
+              "placeholder": "VTxxxxxxxxxxxxxxxxxxxxxxxx",
+              "required": true,
+              "helperText": "Find your key at https://www.virustotal.com after creating an account.",
+              "validation": {
+                "pattern": "^[A-Za-z0-9]{10,}$"
+              }
+            }
+          ]
+        },
+        {
+          "title": "Scan Behaviour",
+          "description": "Control how the scan pipeline behaves for new uploads and downloads.",
+          "fields": [
+            {
+              "type": "number",
+              "key": "scanTimeoutMs",
+              "label": "Scan timeout (ms)",
+              "min": 5000,
+              "max": 120000,
+              "step": 5000,
+              "default": 45000
+            },
+            {
+              "type": "toggle",
+              "key": "quarantineOnDetection",
+              "label": "Quarantine files when VirusTotal flags a threat",
+              "default": true
+            },
+            {
+              "type": "toggle",
+              "key": "reattemptOnFailure",
+              "label": "Retry scan automatically when VirusTotal is unavailable",
+              "default": true
+            }
+          ]
+        }
+      ],
+      "channel": []
+    }
+  }
+}
