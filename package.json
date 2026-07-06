@@ -1,7 +1,7 @@
 {
   "name": "@multiforum/security-attachment-scan",
-  "version": "0.2.1",
-  "description": "Scans uploaded file attachments for malware using the VirusTotal API",
+  "version": "0.3.0",
+  "description": "Forwards uploaded file attachments to the Multiforum security-scan service (VirusTotal + static ZIP analysis).",
   "type": "module",
   "main": "dist/index.js",
   "files": [
@@ -36,13 +36,9 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "node-fetch": "^2.7.0"
-  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.5.0",
-    "vitest": "^4.1.9",
-    "@types/node-fetch": "^2.6.4"
+    "vitest": "^4.1.9"
   }
 }

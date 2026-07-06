@@ -1,50 +1,56 @@
 # Security: Attachment Scan Plugin
 
-The **Security: Attachment Scan** plugin protects downloadable uploads by
-talking to the [VirusTotal API](https://www.virustotal.com/). When enabled at
-the server scope it inspects zip files (and any other downloadable attachments)
-as soon as they are uploaded and again right before a visitor downloads the
-bundle.
+The **Security: Attachment Scan** plugin protects downloadable uploads. When
+enabled at the server scope it inspects attachments as soon as they are uploaded
+(and again right before a visitor downloads the bundle) by calling the
+[Multiforum security-scan service](https://github.com/gennit-project/multiforum-plugin-security-scan-service) —
+a standalone Python/FastAPI microservice.
+
+> **Why a separate service?** Multiforum plugins run in-process inside the Node
+> backend, so heavy or risky file handling (downloading untrusted uploads,
+> unpacking ZIPs) is better kept out of that process. The service runs the
+> VirusTotal reputation lookup **and** static ZIP analysis (dangerous file
+> types, zip-bomb ratio, path-traversal entries, README/LICENSE checks) and
+> returns a single verdict. The VirusTotal API key lives on the service, not in
+> the forum backend.
 
 ## How It Works
 
 1. A creator uploads a downloadable file to a channel.
-2. Multiforum emits either `downloadableFile.created` or
-   `downloadableFile.updated`.
-3. The plugin posts the file URL to VirusTotal and stores the scan result by
-   calling `ctx.storeFlag()`.
-4. The pipeline UI surfaces a pass/fail badge for moderators and creators.
-5. The public sees a confirmation that the virus scan ran before the download
-   link is released.
+2. Multiforum emits `downloadableFile.created` / `.updated` / `.downloaded`.
+3. For each attachment URL, the plugin `POST`s to the service's `/scan` endpoint
+   with the `X-API-Key` header.
+4. The service returns a verdict — `clean`, `suspicious`, `malicious`, or
+   `error`. The plugin takes the worst verdict across all attachments.
+5. If that verdict meets the configured **Block on** threshold (default
+   `malicious`), the plugin returns `success: false`, which fails the pipeline
+   step and blocks the upload. Any non-clean verdict is also recorded via
+   `ctx.storeFlag()` so moderators see it.
 
-The plugin also re-runs the scan when someone requests the download to guard
-against newly-detected threats.
+## Configuration
 
-## Required Secrets
+### Secret
 
-| Key                    | Scope  | Description                                                 |
-| ---------------------- | ------ | ----------------------------------------------------------- |
-| `VIRUS_TOTAL_API_KEY`  | Server | API key used to authenticate with the VirusTotal REST API.  |
+| Key                    | Scope  | Description                                                            |
+| ---------------------- | ------ | ---------------------------------------------------------------------- |
+| `SCAN_SERVICE_API_KEY` | Server | Shared secret sent as `X-API-Key`; must match the service's `SCAN_API_KEY`. |
 
-The manifest ships UI metadata so administrators can save the key directly
-inside Multiforum.
+### Settings
 
-## Settings Form
+| Key                      | Scope   | Default      | Description                                                        |
+| ------------------------ | ------- | ------------ | ----------------------------------------------------------------- |
+| `serviceUrl`             | Server  | —            | Base URL of the deployed Cloud Run scan service.                  |
+| `blockOn`                | Server  | `malicious`  | Minimum verdict that blocks the upload (`suspicious`/`malicious`/`error`). |
+| `policy.require_readme`  | Channel | `false`      | Require a `README` at the ZIP root.                               |
+| `policy.require_license` | Channel | `false`      | Require a `LICENSE` at the ZIP root.                              |
 
-The manifest exports a config schema with two sections:
-
-- A **Secrets** section that renders a password input for the VirusTotal API
-  key with validation hints.
-- A **Settings** section where administrators can tweak the scan timeout and
-  control whether downloads should be quarantined automatically if VirusTotal
-  flags a threat.
-
-See `plugin.json` for the full schema and default values.
-
+The manifest ships UI metadata so administrators can configure all of this
+directly inside Multiforum. See `plugin.json` for the full schema.
 
 ## Standalone Plugin Package
 
-This repository is the source of truth for `security-attachment-scan`. Plugin releases are versioned with Git tags in the form `v<plugin.json version>`.
+This repository is the source of truth for `security-attachment-scan`. Plugin
+releases are versioned with Git tags in the form `v<plugin.json version>`.
 
 ### Development
 
@@ -53,7 +59,8 @@ npm install
 npm run ci
 ```
 
-`npm run ci` validates `plugin.json`, runs Vitest, builds TypeScript, and creates a release bundle under `out/`.
+`npm run ci` validates `plugin.json`, runs Vitest, builds TypeScript, and
+creates a release bundle under `out/`.
 
 ### Release
 
@@ -62,7 +69,9 @@ npm run ci
 3. Tag the commit with `v<version>`.
 4. Push the tag.
 
-The `Publish Release` workflow builds `security-attachment-scan-<version>.tgz`, writes a SHA-256 checksum, and uploads both artifacts to the GitHub Release.
+The `Publish Release` workflow builds `security-attachment-scan-<version>.tgz`,
+writes a SHA-256 checksum, and uploads both artifacts (plus `plugin.json`) to the
+GitHub Release.
 
 ### Registry Metadata
 
@@ -71,6 +80,6 @@ Use this source URL in the Multiforum plugin registry:
 ```json
 {
   "sourceRepoUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan",
-  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.2.1"
+  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.3.0"
 }
 ```
