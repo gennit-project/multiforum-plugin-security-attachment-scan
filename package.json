@@ -1,6 +1,6 @@
 {
   "name": "@multiforum/security-attachment-scan",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Forwards uploaded file attachments to the Multiforum security-scan service (VirusTotal + static ZIP analysis).",
   "type": "module",
   "main": "dist/index.js",

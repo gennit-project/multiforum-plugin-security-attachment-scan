@@ -1,7 +1,7 @@
 {
   "id": "security-attachment-scan",
   "name": "Security: Attachment Scan",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Scans uploaded file attachments via the Multiforum security-scan service (VirusTotal reputation + static ZIP analysis).",
   "entry": "dist/index.js",
   "events": [
@@ -36,7 +36,7 @@
   },
   "source": {
     "repoUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan",
-    "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.3.0"
+    "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.4.0"
   },
   "compatibility": {
     "minServerVersion": "1.0.0",
@@ -46,6 +46,7 @@
     "server": {
       "serviceUrl": "",
       "blockOn": "malicious",
+      "onError": "block",
       "policy": {}
     },
     "channel": {
@@ -81,17 +82,28 @@
         },
         {
           "title": "Scan Behaviour",
-          "description": "Control when a scan verdict blocks the upload.",
+          "description": "Control when a scan result blocks an upload.",
           "fields": [
             {
               "type": "select",
               "key": "blockOn",
-              "label": "Block uploads when the verdict is at least",
+              "label": "Block uploads when the scan finds at least",
               "default": "malicious",
+              "helperText": "How strict to be on findings. 'Suspicious' also blocks malicious.",
               "options": [
                 { "value": "suspicious", "label": "Suspicious" },
-                { "value": "malicious", "label": "Malicious" },
-                { "value": "error", "label": "Error (fail closed)" }
+                { "value": "malicious", "label": "Malicious" }
+              ]
+            },
+            {
+              "type": "select",
+              "key": "onError",
+              "label": "When the scan can't complete (error or service unreachable)",
+              "default": "block",
+              "helperText": "Fail closed (block) is safest: an attacker can't bypass the scan by making it error.",
+              "options": [
+                { "value": "block", "label": "Block the upload (fail closed)" },
+                { "value": "allow", "label": "Allow the upload (fail open)" }
               ]
             }
           ]
