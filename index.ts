@@ -42,6 +42,16 @@ interface EventEnvelope {
 
 type Verdict = "clean" | "suspicious" | "malicious" | "error";
 
+// The malice threshold an admin can require before an upload is blocked. Note
+// that "error" is deliberately NOT a threshold value: a scan error is an
+// operational state ("we couldn't determine safety"), not a point on the
+// malice scale, so it is handled by the separate `onError` toggle below.
+type MaliceThreshold = "suspicious" | "malicious";
+
+// What to do when the scan can't complete (the service returned `error`, or was
+// unreachable). "block" = fail closed (default, safest); "allow" = fail open.
+type OnError = "block" | "allow";
+
 interface ScanResult {
   verdict: Verdict;
   summary: string;
@@ -49,11 +59,21 @@ interface ScanResult {
   checks?: unknown[];
 }
 
+// Severity ordering used only for reporting the worst verdict across
+// attachments (error ranks highest for display purposes).
 const VERDICT_SEVERITY: Record<Verdict, number> = {
   clean: 0,
   suspicious: 1,
   malicious: 2,
   error: 3,
+};
+
+// Ordering used for the block decision on non-error verdicts. Error is excluded
+// on purpose — it is governed by `onError`, not by the malice threshold.
+const MALICE_SEVERITY: Record<"clean" | "suspicious" | "malicious", number> = {
+  clean: 0,
+  suspicious: 1,
+  malicious: 2,
 };
 
 // storeFlag severity per verdict.
@@ -70,7 +90,8 @@ export default class SecurityAttachmentScan {
   private fetchImpl: typeof fetch | null;
   private serviceUrl: string;
   private apiKey: string;
-  private blockOn: Verdict;
+  private blockOn: MaliceThreshold;
+  private onError: OnError;
   private policy: Record<string, unknown>;
   private isConfigured: boolean;
 
@@ -89,7 +110,13 @@ export default class SecurityAttachmentScan {
     const settings = context.settings ?? {};
     this.serviceUrl = String(settings.serviceUrl ?? "").replace(/\/+$/, "");
     this.apiKey = context.secrets?.server?.SCAN_SERVICE_API_KEY ?? "";
-    this.blockOn = this.normalizeVerdict(settings.blockOn, "malicious");
+    this.blockOn =
+      settings.blockOn === "suspicious" || settings.blockOn === "malicious"
+        ? settings.blockOn
+        : "malicious";
+    // Fail closed by default: block if the scan can't complete, unless an admin
+    // explicitly opts into fail-open.
+    this.onError = settings.onError === "allow" ? "allow" : "block";
     this.policy =
       settings.policy && typeof settings.policy === "object"
         ? (settings.policy as Record<string, unknown>)
@@ -103,13 +130,12 @@ export default class SecurityAttachmentScan {
     }
   }
 
-  private normalizeVerdict(value: unknown, fallback: Verdict): Verdict {
-    return value === "clean" ||
-      value === "suspicious" ||
-      value === "malicious" ||
-      value === "error"
-      ? value
-      : fallback;
+  // Whether a single attachment's verdict should block the upload. A scan
+  // "error" is governed by `onError` (fail closed by default); other verdicts
+  // are compared against the malice threshold.
+  private isBlocking(verdict: Verdict): boolean {
+    if (verdict === "error") return this.onError === "block";
+    return MALICE_SEVERITY[verdict] >= MALICE_SEVERITY[this.blockOn];
   }
 
   private missingConfig(): string[] {
@@ -166,7 +192,9 @@ export default class SecurityAttachmentScan {
       "clean",
     );
 
-    const blocked = VERDICT_SEVERITY[worst] >= VERDICT_SEVERITY[this.blockOn];
+    // Block if ANY attachment's verdict is a blocking one (per the malice
+    // threshold, or per onError for scan errors).
+    const blocked = scans.some(({ scan }) => this.isBlocking(scan.verdict));
     const summary = scans
       .map(({ url, scan }) => `${scan.verdict}: ${url} (${scan.summary})`)
       .join(" | ");

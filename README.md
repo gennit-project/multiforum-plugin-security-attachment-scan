@@ -21,11 +21,22 @@ a standalone Python/FastAPI microservice.
 3. For each attachment URL, the plugin `POST`s to the service's `/scan` endpoint
    with the `X-API-Key` header.
 4. The service returns a verdict — `clean`, `suspicious`, `malicious`, or
-   `error`. The plugin takes the worst verdict across all attachments.
-5. If that verdict meets the configured **Block on** threshold (default
-   `malicious`), the plugin returns `success: false`, which fails the pipeline
-   step and blocks the upload. Any non-clean verdict is also recorded via
-   `ctx.storeFlag()` so moderators see it.
+   `error`.
+5. The upload is blocked if any attachment is a **blocking** result:
+   - a finding at or above the `blockOn` threshold (`suspicious` or
+     `malicious`), or
+   - a scan `error`, when `onError` is `block` (the default — see below).
+   Blocking makes the plugin return `success: false`, which fails the pipeline
+   step. Any non-clean verdict is also recorded via `ctx.storeFlag()` so
+   moderators see it.
+
+> **On scan errors (fail closed vs open).** A scan `error` — a service failure,
+> an unreachable service, or an unreadable file — is an operational state, *not*
+> a point on the malice scale, so it is governed by its own `onError` toggle
+> rather than by `blockOn`. The default is `block` (fail closed): if we can't
+> determine a file is safe, we don't let it through — which also means an
+> attacker can't bypass the scan by deliberately making it error. Set
+> `onError: allow` only if availability matters more than safety for your server.
 
 ## Configuration
 
@@ -40,7 +51,8 @@ a standalone Python/FastAPI microservice.
 | Key                      | Scope   | Default      | Description                                                        |
 | ------------------------ | ------- | ------------ | ----------------------------------------------------------------- |
 | `serviceUrl`             | Server  | —            | Base URL of the deployed Cloud Run scan service.                  |
-| `blockOn`                | Server  | `malicious`  | Minimum verdict that blocks the upload (`suspicious`/`malicious`/`error`). |
+| `blockOn`                | Server  | `malicious`  | Malice threshold that blocks the upload: `suspicious` or `malicious`. |
+| `onError`                | Server  | `block`      | What to do when the scan can't complete: `block` (fail closed) or `allow` (fail open). |
 | `policy.require_readme`  | Channel | `false`      | Require a `README` at the ZIP root.                               |
 | `policy.require_license` | Channel | `false`      | Require a `LICENSE` at the ZIP root.                              |
 
@@ -80,6 +92,6 @@ Use this source URL in the Multiforum plugin registry:
 ```json
 {
   "sourceRepoUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan",
-  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.3.0"
+  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.4.0"
 }
 ```

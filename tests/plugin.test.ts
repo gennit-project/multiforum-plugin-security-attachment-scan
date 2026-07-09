@@ -121,4 +121,50 @@ describe("SecurityAttachmentScan", () => {
 
     expect(fetchMock.mock.calls[0][1].headers["x-api-key"]).toBe("supersecret");
   });
+
+  it("blocks on scan error by default (fail closed)", async () => {
+    mockFetchVerdict("error", "scan service unreachable");
+    const plugin = new Plugin({ ...CONFIGURED, storeFlag: vi.fn(), log: vi.fn() });
+
+    const result = await plugin.handleEvent({
+      type: "downloadableFile.created",
+      payload: { downloadableFileId: "file-1", attachmentUrls: ["https://example.com/f.zip"] },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("allows on scan error when onError is 'allow' (fail open)", async () => {
+    mockFetchVerdict("error", "scan service unreachable");
+    const plugin = new Plugin({
+      ...CONFIGURED,
+      settings: { ...CONFIGURED.settings, onError: "allow" },
+      storeFlag: vi.fn(),
+      log: vi.fn(),
+    });
+
+    const result = await plugin.handleEvent({
+      type: "downloadableFile.created",
+      payload: { downloadableFileId: "file-1", attachmentUrls: ["https://example.com/f.zip"] },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("blocks a suspicious verdict when blockOn is 'suspicious'", async () => {
+    mockFetchVerdict("suspicious", "missing README");
+    const plugin = new Plugin({
+      ...CONFIGURED,
+      settings: { ...CONFIGURED.settings, blockOn: "suspicious" },
+      storeFlag: vi.fn(),
+      log: vi.fn(),
+    });
+
+    const result = await plugin.handleEvent({
+      type: "downloadableFile.created",
+      payload: { downloadableFileId: "file-1", attachmentUrls: ["https://example.com/f.zip"] },
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
