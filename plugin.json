@@ -67,16 +67,6 @@
               "placeholder": "https://security-scan-service-xxxx.run.app",
               "required": true,
               "helperText": "Base URL of the Cloud Run security-scan service."
-            },
-            {
-              "type": "secret",
-              "key": "SCAN_SERVICE_API_KEY",
-              "label": "Service API Key",
-              "required": true,
-              "helperText": "Shared secret sent as X-API-Key; must match the service's SCAN_API_KEY.",
-              "validation": {
-                "pattern": "^.{8,}$"
-              }
             }
           ]
         },
