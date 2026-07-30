@@ -1,7 +1,7 @@
 {
   "id": "security-attachment-scan",
   "name": "Security: Attachment Scan",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Scans uploaded file attachments via the Multiforum security-scan service (VirusTotal reputation + static ZIP analysis).",
   "entry": "dist/index.js",
   "events": [
@@ -36,7 +36,7 @@
   },
   "source": {
     "repoUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan",
-    "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.4.0"
+    "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.5.0"
   },
   "compatibility": {
     "minServerVersion": "1.0.0",
