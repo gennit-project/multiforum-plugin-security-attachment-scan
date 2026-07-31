@@ -25,6 +25,15 @@ interface HookContext {
     meta?: unknown;
   }) => Promise<void>;
   log: (...args: unknown[]) => void;
+  diagnostics?: {
+    public: (input: {
+      level: "INFO" | "WARNING" | "ERROR";
+      code: string;
+      message: string;
+      details?: unknown;
+      helpUrl?: string;
+    }) => void;
+  };
 }
 
 interface EventEnvelope {
@@ -83,6 +92,9 @@ const FLAG_SEVERITY: Record<Verdict, "low" | "med" | "high"> = {
   malicious: "high",
   error: "med",
 };
+
+const DIAGNOSTIC_HELP_URL =
+  "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan#readme";
 
 export default class SecurityAttachmentScan {
   private context: HookContext;
@@ -147,6 +159,13 @@ export default class SecurityAttachmentScan {
 
   async handleEvent(event: EventEnvelope) {
     if (!this.isConfigured || !this.fetchImpl) {
+      this.context.diagnostics?.public({
+        level: "ERROR",
+        code: "SCAN_CONFIGURATION_REQUIRED",
+        message: "The security scan is not configured.",
+        details: { missing: this.missingConfig() },
+        helpUrl: DIAGNOSTIC_HELP_URL,
+      });
       return {
         success: false,
         error: "Plugin not configured - set serviceUrl and SCAN_SERVICE_API_KEY",
@@ -158,6 +177,12 @@ export default class SecurityAttachmentScan {
     const urls = event.payload.attachmentUrls ?? [];
     if (urls.length === 0) {
       this.logger("No attachments to scan");
+      this.context.diagnostics?.public({
+        level: "INFO",
+        code: "SCAN_NOT_APPLICABLE",
+        message: "There were no attachments to scan.",
+        helpUrl: DIAGNOSTIC_HELP_URL,
+      });
       return { success: true, result: { message: "No attachments to scan" } };
     }
 
@@ -198,6 +223,41 @@ export default class SecurityAttachmentScan {
     const summary = scans
       .map(({ url, scan }) => `${scan.verdict}: ${url} (${scan.summary})`)
       .join(" | ");
+    const diagnostic =
+      worst === "clean"
+        ? {
+            level: "INFO" as const,
+            code: "SCAN_COMPLETE",
+            message: "The security scan completed without finding a threat.",
+          }
+        : worst === "suspicious"
+          ? {
+              level: "WARNING" as const,
+              code: "SCAN_SUSPICIOUS",
+              message: "The security scan found content that needs review.",
+            }
+          : worst === "malicious"
+            ? {
+                level: "ERROR" as const,
+                code: "SCAN_MALWARE_DETECTED",
+                message: "The security scan detected a threat.",
+              }
+            : {
+                level: (blocked ? "ERROR" : "WARNING") as "ERROR" | "WARNING",
+                code: "SCAN_PROVIDER_ERROR",
+                message: blocked
+                  ? "The security scan could not complete, so this download remains blocked."
+                  : "The security scan could not complete; this server is configured to allow the download.",
+              };
+    this.context.diagnostics?.public({
+      ...diagnostic,
+      details: {
+        verdict: worst,
+        scannedFiles: scans.length,
+        blocked,
+      },
+      helpUrl: DIAGNOSTIC_HELP_URL,
+    });
 
     return {
       success: !blocked,

@@ -38,6 +38,21 @@ a standalone Python/FastAPI microservice.
 > attacker can't bypass the scan by deliberately making it error. Set
 > `onError: allow` only if availability matters more than safety for your server.
 
+## Public diagnostics
+
+The plugin publishes a bounded, share-safe diagnostic for every check. It does
+not include attachment URLs, provider response bodies, credentials, or internal
+logs.
+
+| Code | Meaning |
+| --- | --- |
+| `SCAN_COMPLETE` | The scan completed without finding a threat. |
+| `SCAN_NOT_APPLICABLE` | The event contained no attachments to scan. |
+| `SCAN_SUSPICIOUS` | The scan found content that needs review. |
+| `SCAN_MALWARE_DETECTED` | The scan detected a threat. |
+| `SCAN_PROVIDER_ERROR` | The provider could not complete the scan. |
+| `SCAN_CONFIGURATION_REQUIRED` | Required plugin configuration is missing. |
+
 ## Configuration
 
 ### Secret
@@ -92,6 +107,6 @@ Use this source URL in the Multiforum plugin registry:
 ```json
 {
   "sourceRepoUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan",
-  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.4.0"
+  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.5.0"
 }
 ```

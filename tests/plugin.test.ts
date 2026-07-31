@@ -26,6 +26,30 @@ afterEach(() => {
 });
 
 describe("SecurityAttachmentScan", () => {
+  it("publishes a safe diagnostic when configuration is missing", async () => {
+    const publish = vi.fn();
+    const plugin = new Plugin({
+      scope: "SERVER",
+      settings: {},
+      secrets: { server: {}, forum: {} },
+      storeFlag: vi.fn(),
+      log: vi.fn(),
+      diagnostics: { public: publish },
+    });
+
+    await plugin.handleEvent({
+      type: "downloadableFile.created",
+      payload: { downloadableFileId: "file-1", attachmentUrls: [] },
+    });
+
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        level: "ERROR",
+        code: "SCAN_CONFIGURATION_REQUIRED",
+      }),
+    );
+  });
+
   it("requires configuration before scanning", async () => {
     const plugin = new Plugin({
       scope: "SERVER",
@@ -69,6 +93,40 @@ describe("SecurityAttachmentScan", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("publishes structured diagnostics without attachment URLs", async () => {
+    mockFetchVerdict("malicious", "3 engines flagged this file");
+    const publish = vi.fn();
+    const plugin = new Plugin({
+      ...CONFIGURED,
+      storeFlag: vi.fn(),
+      log: vi.fn(),
+      diagnostics: { public: publish },
+    });
+
+    await plugin.handleEvent({
+      type: "downloadableFile.created",
+      payload: {
+        downloadableFileId: "file-1",
+        attachmentUrls: ["https://storage.example.com/private?token=secret"],
+      },
+    });
+
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        level: "ERROR",
+        code: "SCAN_MALWARE_DETECTED",
+        details: {
+          verdict: "malicious",
+          scannedFiles: 1,
+          blocked: true,
+        },
+      }),
+    );
+    expect(JSON.stringify(publish.mock.calls)).not.toContain(
+      "storage.example.com",
+    );
   });
 
   it("blocks a malicious attachment", async () => {
