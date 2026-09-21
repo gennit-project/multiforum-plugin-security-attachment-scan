@@ -110,6 +110,6 @@ Use this source URL in the Multiforum plugin registry:
 ```json
 {
   "sourceRepoUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan",
-  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.5.0"
+  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.5.1"
 }
 ```
