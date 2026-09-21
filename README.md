@@ -42,7 +42,10 @@ a standalone Python/FastAPI microservice.
 
 The plugin publishes a bounded, share-safe diagnostic for every check. It does
 not include attachment URLs, provider response bodies, credentials, or internal
-logs.
+logs. Completed scan diagnostics include a `correlationId` matching the
+Multiforum plugin job ID. Support staff can use that value to find the same
+request in backend and scanner-service logs without exposing the attachment
+URL.
 
 | Code | Meaning |
 | --- | --- |
@@ -107,6 +110,6 @@ Use this source URL in the Multiforum plugin registry:
 ```json
 {
   "sourceRepoUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan",
-  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.5.0"
+  "releaseNotesUrl": "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan/releases/tag/v0.5.1"
 }
 ```

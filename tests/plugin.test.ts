@@ -5,6 +5,11 @@ type Verdict = "clean" | "suspicious" | "malicious" | "error";
 
 const CONFIGURED = {
   scope: "SERVER" as const,
+  execution: {
+    correlationId: "run-123",
+    pluginRunId: "run-123",
+    pipelineRunId: "attempt-456",
+  },
   settings: { serviceUrl: "https://scan.example.com", blockOn: "malicious" },
   secrets: { server: { SCAN_SERVICE_API_KEY: "supersecret" }, forum: {} },
 };
@@ -117,11 +122,12 @@ describe("SecurityAttachmentScan", () => {
       expect.objectContaining({
         level: "ERROR",
         code: "SCAN_MALWARE_DETECTED",
-        details: {
+        details: expect.objectContaining({
           verdict: "malicious",
           scannedFiles: 1,
           blocked: true,
-        },
+          correlationId: "run-123",
+        }),
       }),
     );
     expect(JSON.stringify(publish.mock.calls)).not.toContain(
@@ -178,6 +184,20 @@ describe("SecurityAttachmentScan", () => {
     });
 
     expect(fetchMock.mock.calls[0][1].headers["x-api-key"]).toBe("supersecret");
+  });
+
+  it("sends the plugin run ID as the scan correlation ID", async () => {
+    const fetchMock = mockFetchVerdict("clean");
+    const plugin = new Plugin({ ...CONFIGURED, storeFlag: vi.fn(), log: vi.fn() });
+
+    await plugin.handleEvent({
+      type: "downloadableFile.created",
+      payload: { downloadableFileId: "file-1", attachmentUrls: ["https://example.com/f.zip"] },
+    });
+
+    expect(fetchMock.mock.calls[0][1].headers["x-correlation-id"]).toBe(
+      "run-123",
+    );
   });
 
   it("blocks on scan error by default (fail closed)", async () => {

@@ -12,6 +12,11 @@
 interface HookContext {
   scope: "SERVER" | "FORUM";
   channelId?: string;
+  execution?: {
+    correlationId?: string;
+    pluginRunId?: string;
+    pipelineRunId?: string;
+  };
   settings: Record<string, unknown>;
   secrets?: {
     server?: Record<string, string>;
@@ -106,10 +111,12 @@ export default class SecurityAttachmentScan {
   private onError: OnError;
   private policy: Record<string, unknown>;
   private isConfigured: boolean;
+  private correlationId?: string;
 
   constructor(context: HookContext) {
     this.context = context;
     this.logger = context.log;
+    this.correlationId = context.execution?.correlationId;
     this.fetchImpl =
       typeof globalThis.fetch === "function"
         ? globalThis.fetch.bind(globalThis)
@@ -255,6 +262,9 @@ export default class SecurityAttachmentScan {
         verdict: worst,
         scannedFiles: scans.length,
         blocked,
+        ...(this.correlationId
+          ? { correlationId: this.correlationId }
+          : {}),
       },
       helpUrl: DIAGNOSTIC_HELP_URL,
     });
@@ -274,12 +284,16 @@ export default class SecurityAttachmentScan {
 
   private async scanOne(fileUrl: string): Promise<ScanResult> {
     try {
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+        "x-api-key": this.apiKey,
+      };
+      if (this.correlationId) {
+        headers["x-correlation-id"] = this.correlationId;
+      }
       const res = await this.fetchImpl!(`${this.serviceUrl}/scan`, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": this.apiKey,
-        },
+        headers,
         body: JSON.stringify({ file_url: fileUrl, policy: this.policy }),
       });
 
