@@ -47,6 +47,11 @@ Multiforum plugin job ID. Support staff can use that value to find the same
 request in backend and scanner-service logs without exposing the attachment
 URL.
 
+Internal plugin logs and stored scan results retain only the attachment URL's
+origin and path. Query parameters and fragments are removed before logging or
+persistence so signed storage credentials are not retained. The complete URL
+is sent only to the scan service for that request.
+
 | Code | Meaning |
 | --- | --- |
 | `SCAN_COMPLETE` | The scan completed without finding a threat. |

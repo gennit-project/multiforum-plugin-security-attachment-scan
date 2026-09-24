@@ -101,6 +101,15 @@ const FLAG_SEVERITY: Record<Verdict, "low" | "med" | "high"> = {
 const DIAGNOSTIC_HELP_URL =
   "https://github.com/gennit-project/multiforum-plugin-security-attachment-scan#readme";
 
+const redactAttachmentUrl = (value: string): string => {
+  try {
+    const url = new URL(value);
+    return `${url.protocol}//${url.host}${url.pathname}`;
+  } catch {
+    return "[redacted attachment URL]";
+  }
+};
+
 export default class SecurityAttachmentScan {
   private context: HookContext;
   private logger: HookContext["log"];
@@ -202,8 +211,11 @@ export default class SecurityAttachmentScan {
     const scans: Array<{ url: string; scan: ScanResult }> = [];
     for (const url of urls) {
       const scan = await this.scanOne(url);
-      scans.push({ url, scan });
-      this.logger(`Scanned ${url} → ${scan.verdict} (${scan.summary})`);
+      const redactedUrl = redactAttachmentUrl(url);
+      scans.push({ url: redactedUrl, scan });
+      this.logger(
+        `Scanned ${redactedUrl} → ${scan.verdict} (${scan.summary})`,
+      );
 
       if (scan.verdict !== "clean") {
         await this.context.storeFlag({
@@ -211,7 +223,11 @@ export default class SecurityAttachmentScan {
           type: "security",
           severity: FLAG_SEVERITY[scan.verdict],
           message: `Attachment scan (${scan.verdict}): ${scan.summary}`,
-          meta: { url, sha256: scan.sha256, verdict: scan.verdict },
+          meta: {
+            url: redactedUrl,
+            sha256: scan.sha256,
+            verdict: scan.verdict,
+          },
         });
       }
     }

@@ -186,6 +186,57 @@ describe("SecurityAttachmentScan", () => {
     expect(fetchMock.mock.calls[0][1].headers["x-api-key"]).toBe("supersecret");
   });
 
+  it("uses signed URLs for scanning without exposing their credentials", async () => {
+    const fetchMock = mockFetchVerdict("malicious", "flagged");
+    const log = vi.fn();
+    const storeFlag = vi.fn();
+    const plugin = new Plugin({ ...CONFIGURED, storeFlag, log });
+    const signedUrl =
+      "https://storage.example.com/private/file.zip?X-Goog-Signature=sensitive#fragment";
+
+    const result = await plugin.handleEvent({
+      type: "downloadableFile.created",
+      payload: { downloadableFileId: "file-1", attachmentUrls: [signedUrl] },
+    });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+      file_url: signedUrl,
+      policy: {},
+    });
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("https://storage.example.com/private/file.zip"),
+    );
+    expect(storeFlag).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meta: expect.objectContaining({
+          url: "https://storage.example.com/private/file.zip",
+        }),
+      }),
+    );
+    expect(JSON.stringify({ logs: log.mock.calls, flags: storeFlag.mock.calls, result }))
+      .not.toContain("sensitive");
+  });
+
+  it("does not expose an attachment value that cannot be parsed as a URL", async () => {
+    const fetchMock = mockFetchVerdict("clean");
+    const log = vi.fn();
+    const plugin = new Plugin({ ...CONFIGURED, storeFlag: vi.fn(), log });
+    const attachmentValue = "not-a-url?credential=sensitive";
+
+    const result = await plugin.handleEvent({
+      type: "downloadableFile.created",
+      payload: {
+        downloadableFileId: "file-1",
+        attachmentUrls: [attachmentValue],
+      },
+    });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).file_url)
+      .toBe(attachmentValue);
+    expect(JSON.stringify({ logs: log.mock.calls, result }))
+      .not.toContain("sensitive");
+  });
+
   it("sends the plugin run ID as the scan correlation ID", async () => {
     const fetchMock = mockFetchVerdict("clean");
     const plugin = new Plugin({ ...CONFIGURED, storeFlag: vi.fn(), log: vi.fn() });
